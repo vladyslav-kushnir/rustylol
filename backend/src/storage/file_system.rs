@@ -46,6 +46,18 @@ impl Storage for FileSystemStorage {
             .flatten()
     }
 
+    fn delete_command(&self, name: String) -> Result<(), StorageError> {
+        self.db
+            .write(|db| {
+                db.remove(&name);
+            })
+            .map_err(|err| StorageError::DatabaseError(err))?;
+
+        self.db
+            .save()
+            .map_err(|err| StorageError::DatabaseError(err))
+    }
+
     // fn add_command_variation(
     //     &self,
     //     command_name: String,

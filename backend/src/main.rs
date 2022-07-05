@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use cors::CORS;
 use rocket::{
     fs::NamedFile,
     futures::io,
@@ -24,6 +25,7 @@ use crate::{
 
 mod models;
 mod storage;
+mod cors;
 
 #[get("/<command>")]
 fn index(storage: &State<Box<dyn Storage>>, command: String) -> Result<Redirect, Status> {
@@ -95,6 +97,18 @@ fn upsert_command(
     Ok(NoContent)
 }
 
+#[delete("/api/command/<name>")]
+fn delete_command(
+    storage: &State<Box<dyn Storage>>,
+    name: String,
+) -> Result<NoContent, Status> {
+    storage
+        .delete_command(name)
+        .map_err(|_| Status::InternalServerError)?;
+
+    Ok(NoContent)
+}
+
 // #[post("/api/command/<name>", data = "<request>")]
 // fn add_variation(
 //     storage: &State<Box<dyn Storage>>,
@@ -123,6 +137,11 @@ fn get_commands(storage: &State<Box<dyn Storage>>) -> Json<Vec<Command>> {
     Json(storage.get_commands().unwrap_or_default())
 }
 
+#[options("/api/<_anything..>")]
+fn options(_anything: PathBuf) -> NoContent {
+    NoContent
+}
+
 #[launch]
 fn rocket() -> _ {
     let storage = FileSystemStorage::new();
@@ -145,8 +164,11 @@ fn rocket() -> _ {
                 admin_static_files,
                 help_static_files,
                 upsert_command,
-                get_commands
+                delete_command,
+                get_commands,
+                options
             ],
         )
+        .attach(CORS)
         .manage(Box::new(storage) as Box<dyn Storage>)
 }

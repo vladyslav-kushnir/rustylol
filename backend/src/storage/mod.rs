@@ -21,6 +21,8 @@ pub trait Storage: Send + Sync {
 
     fn upsert_command(&self, command: Command) -> Result<(), StorageError>;
 
+    fn delete_command(&self, name: String) -> Result<(), StorageError>;
+
     // fn add_command_variation(
     //     &self,
     //     command_name: String,
