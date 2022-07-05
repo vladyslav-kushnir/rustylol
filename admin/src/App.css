@@ -16,3 +16,7 @@
 .App-link {
   color: #61dafb;
 }
+
+input.invalid {
+  border: 1px solid red;
+}
