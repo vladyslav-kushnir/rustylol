@@ -57,12 +57,19 @@ export default function Command(props) {
     }, [variations, name]);
 
     let save = async () => {
-        if (await Api.upsertCommand({
-            name,
-            variations: variations.filter(x => !x.isDeleted).map(x => x.current)
-        })) {
-            setIsNew(false);
-            setCanSave(false);
+        try {
+            let upsertResult = await Api.upsertCommand({
+                name,
+                variations: variations.filter(x => !x.isDeleted).map(x => x.current)
+            });
+
+            if (upsertResult) {
+                setIsNew(false);
+                setCanSave(false);
+            }
+        }
+        catch (err) {
+            props.history.push('/');
         }
     };
 

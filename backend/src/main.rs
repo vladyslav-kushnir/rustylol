@@ -1,31 +1,36 @@
 #[macro_use]
 extern crate rocket;
-extern crate strfmt;
+
+#[macro_use]
+extern crate lazy_static;
 
 use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
+    path::PathBuf, sync::Arc,
 };
 
+use auth::AuthManager;
 use cors::CORS;
 use rocket::{
-    fs::NamedFile,
-    futures::io,
-    http::Status,
-    response::{status::NoContent, Redirect},
-    serde::json::Json,
+    http::{Status},
+    response::{status::{NoContent}, Redirect},
     State,
 };
-use storage::Variation;
 
 use crate::{
-    models::AddCommandRequest,
-    storage::{Command, FileSystemStorage, Storage},
+    storage::{FileSystemStorage, Storage},
 };
 
 mod models;
 mod storage;
 mod cors;
+mod auth;
+mod settings;
+mod http;
+
+lazy_static! {
+    static ref CONFIG: settings::Settings =
+        settings::Settings::new().expect("config can be loaded");
+}
 
 #[get("/<command>")]
 fn index(storage: &State<Box<dyn Storage>>, command: String) -> Result<Redirect, Status> {
@@ -53,90 +58,6 @@ fn index(storage: &State<Box<dyn Storage>>, command: String) -> Result<Redirect,
     }
 }
 
-#[get("/help/<file..>?<command>")]
-async fn help_static_files(command: Option<&str>, mut file: PathBuf) -> io::Result<NamedFile> {
-    let page_directory_path = format!("{}/../help/build", env!("CARGO_MANIFEST_DIR"));
-
-    if file.as_os_str() == "" || command.is_some() {
-        file = PathBuf::from("index.html");
-    }
-
-    NamedFile::open(Path::new(&page_directory_path).join(file)).await
-}
-
-#[get("/admin/<file..>")]
-async fn admin_static_files(mut file: PathBuf) -> io::Result<NamedFile> {
-    let page_directory_path = format!("{}/../admin/build", env!("CARGO_MANIFEST_DIR"));
-
-    if file.as_os_str() == "" {
-        file = PathBuf::from("index.html");
-    }
-
-    NamedFile::open(Path::new(&page_directory_path).join(file)).await
-}
-
-#[post("/api/command", data = "<request>")]
-fn upsert_command(
-    storage: &State<Box<dyn Storage>>,
-    request: Json<AddCommandRequest>,
-) -> Result<NoContent, Status> {
-    let data = request.0;
-
-    let command = Command::new(
-        data.name,
-        data.variations
-            .into_iter()
-            .map(|v| Variation::new(v))
-            .collect::<Vec<_>>(),
-    );
-
-    storage
-        .upsert_command(command)
-        .map_err(|_| Status::InternalServerError)?;
-
-    Ok(NoContent)
-}
-
-#[delete("/api/command/<name>")]
-fn delete_command(
-    storage: &State<Box<dyn Storage>>,
-    name: String,
-) -> Result<NoContent, Status> {
-    storage
-        .delete_command(name)
-        .map_err(|_| Status::InternalServerError)?;
-
-    Ok(NoContent)
-}
-
-// #[post("/api/command/<name>", data = "<request>")]
-// fn add_variation(
-//     storage: &State<Box<dyn Storage>>,
-//     name: String,
-//     request: Json<AddCommandRequest>,
-// ) -> Result<NoContent, Status> {
-//     let data = request.0;
-
-//     let command = Command::new(
-//         data.name,
-//         data.variations
-//             .into_iter()
-//             .map(|v| Variation::new(v))
-//             .collect::<Vec<_>>(),
-//     );
-
-//     storage
-//         .add_command(command)
-//         .map_err(|_| Status::InternalServerError)?;
-
-//     Ok(NoContent)
-// }
-
-#[get("/api/commands")]
-fn get_commands(storage: &State<Box<dyn Storage>>) -> Json<Vec<Command>> {
-    Json(storage.get_commands().unwrap_or_default())
-}
-
 #[options("/api/<_anything..>")]
 fn options(_anything: PathBuf) -> NoContent {
     NoContent
@@ -146,29 +67,24 @@ fn options(_anything: PathBuf) -> NoContent {
 fn rocket() -> _ {
     let storage = FileSystemStorage::new();
 
-    storage
-        .upsert_command(Command::new(
-            "test".to_string(),
-            vec![
-                Variation::new("{0}".to_string()),
-                Variation::new("{0}/{1}".to_string()),
-            ],
-        ))
-        .expect("test command");
+    let auth_manager = Arc::new(AuthManager::new(&CONFIG.auth));
 
     rocket::build()
         .mount(
             "/",
             routes![
                 index,
-                admin_static_files,
-                help_static_files,
-                upsert_command,
-                delete_command,
-                get_commands,
-                options
+                options,
+                http::static_files::admin,
+                http::static_files::help,
+                http::api_commands::upsert_command,
+                http::api_commands::delete_command,
+                http::api_commands::get_commands,
+                http::api_auth::get_auth,
+                http::api_auth::auth_callback
             ],
         )
         .attach(CORS)
         .manage(Box::new(storage) as Box<dyn Storage>)
+        .manage(auth_manager)
 }

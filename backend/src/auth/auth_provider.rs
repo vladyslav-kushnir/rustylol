@@ -1,0 +1,41 @@
+use std::fmt::Display;
+
+use oauth2::url::ParseError;
+
+use super::{AuthHeader, AuthValue};
+
+#[derive(Debug)]
+pub enum Error {
+    Internal(String),
+    InvalidAuth
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Internal(err) => write!(f, "{}", err),
+            Self::InvalidAuth => write!(f, "invalid auth")
+        }
+    }
+}
+
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
+        Error::Internal(e.to_string())
+    }
+}
+
+impl<RE, T> From<oauth2::RequestTokenError<RE, T>> for Error where
+RE: std::error::Error + 'static,
+T: oauth2::ErrorResponse + 'static, {
+    fn from(e: oauth2::RequestTokenError<RE, T>) -> Self {
+        Error::Internal(e.to_string())
+    }
+}
+
+#[rocket::async_trait]
+pub trait AuthProvider: Send + Sync {
+    fn get_url(&self, state: &str) -> String;
+    async fn get_access_token(&self, code: &str, state: &str) -> Result<String, Error>;
+    async fn get_identity(&self, header: &AuthHeader) -> Result<AuthValue, Error>;
+}

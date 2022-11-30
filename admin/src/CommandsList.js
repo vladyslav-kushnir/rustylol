@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react';
 import Command from './Command';
 import Api from './api/Api';
 
-export default function CommandsList() {
+export default function CommandsList(props) {
     const [commands, setCommands] = useState([]);
 
     let addCommand = () => {
@@ -19,7 +19,7 @@ export default function CommandsList() {
     useEffect(() => {
         Api.getCommands().then(commands => {
             setCommands(commands);
-        });
+        }).catch(error => props.history.push('/'));
     }, []);
 
     return (
