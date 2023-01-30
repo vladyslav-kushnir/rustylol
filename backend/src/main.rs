@@ -15,9 +15,10 @@ use rocket::{
     response::{status::{NoContent}, Redirect},
     State,
 };
+use storage::initialize_storage;
 
 use crate::{
-    storage::{FileSystemStorage, Storage},
+    storage::Storage,
 };
 
 mod models;
@@ -26,6 +27,7 @@ mod cors;
 mod auth;
 mod settings;
 mod http;
+mod utils;
 
 lazy_static! {
     static ref CONFIG: settings::Settings =
@@ -65,7 +67,7 @@ fn options(_anything: PathBuf) -> NoContent {
 
 #[launch]
 fn rocket() -> _ {
-    let storage = FileSystemStorage::new();
+    let storage = initialize_storage(&CONFIG.storage);
 
     let auth_manager = Arc::new(AuthManager::new(&CONFIG.auth));
 
@@ -80,11 +82,11 @@ fn rocket() -> _ {
                 http::api_commands::upsert_command,
                 http::api_commands::delete_command,
                 http::api_commands::get_commands,
-                http::api_auth::get_auth,
+                http::api_auth::get_auth_redirect_url,
                 http::api_auth::auth_callback
             ],
         )
         .attach(CORS)
-        .manage(Box::new(storage) as Box<dyn Storage>)
+        .manage(storage)
         .manage(auth_manager)
 }

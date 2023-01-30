@@ -1,12 +1,17 @@
 mod file_system;
+mod s3_storage;
 
 use std::collections::HashMap;
 
 pub use file_system::FileSystemStorage;
+pub use s3_storage::S3Storage;
+
 use rocket::serde::{Deserialize, Serialize};
 use rustbreak::RustbreakError;
 
 use strfmt::strfmt;
+
+use crate::settings;
 
 #[derive(Debug)]
 pub enum StorageError {
@@ -22,12 +27,6 @@ pub trait Storage: Send + Sync {
     fn upsert_command(&self, command: Command) -> Result<(), StorageError>;
 
     fn delete_command(&self, name: String) -> Result<(), StorageError>;
-
-    // fn add_command_variation(
-    //     &self,
-    //     command_name: String,
-    //     variation: String,
-    // ) -> Result<(), StorageError>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,5 +80,12 @@ impl Variation {
             args_count,
             url_pattern,
         }
+    }
+}
+
+pub fn initialize_storage(settings: &settings::Storage) -> Box<dyn Storage> {
+    match settings {
+        settings::Storage::File { config } => Box::new(FileSystemStorage::new(config)),
+        settings::Storage::S3 { config } => Box::new(S3Storage::new(config)),
     }
 }

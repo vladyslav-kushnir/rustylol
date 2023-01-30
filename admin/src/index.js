@@ -14,20 +14,20 @@ import Callback from './auth/callback';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-const PrivateRoute = ({ ...props }) => {
-  if (localStorage.getItem('token')) {
-    return <Route { ...props } />;
-  }
+const PrivateRoute = ({...props}) => {
+    const auth = localStorage.getItem('token');
 
-  props.history.push("/admin/login")
-};
+    return auth ? <App {...props} /> : <Navigate to="/admin/login" replace />;
+}
 
 root.render(
   <BrowserRouter>
     <Routes>
-      <Route path="/admin/login" element={<Login />} />
-      <Route path="/admin/callback" element={<Callback />} />
-      <PrivateRoute path="/admin/" element={<App />} />
+      <Route path="/admin/">
+        <Route path="login" element={<Login />} />
+        <Route path="callback" element={<Callback />} />
+        <Route index element={<PrivateRoute />} />
+      </Route>
     </Routes>
   </BrowserRouter>
 );

@@ -2,6 +2,8 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use rustbreak::{deser::Ron, FileDatabase};
 
+use crate::settings;
+
 use super::{Command, Storage, StorageError, Variation};
 
 pub struct FileSystemStorage {
@@ -9,9 +11,9 @@ pub struct FileSystemStorage {
 }
 
 impl FileSystemStorage {
-    pub fn new() -> Self {
+    pub fn new(config: &settings::FileStorageConfig) -> Self {
         let db =
-            FileDatabase::<HashMap<String, Command>, Ron>::load_from_path_or_default("test.ron")
+            FileDatabase::<HashMap<String, Command>, Ron>::load_from_path_or_default(config.path.to_owned())
                 .expect("Database with commands should be created");
 
         db.load().expect("Database needs to be loaded");
@@ -57,41 +59,4 @@ impl Storage for FileSystemStorage {
             .save()
             .map_err(|err| StorageError::DatabaseError(err))
     }
-
-    // fn add_command_variation(
-    //     &self,
-    //     command_name: String,
-    //     variation: String,
-    // ) -> Result<(), StorageError> {
-    //     let command = self.get_command(command_name);
-
-    //     match command {
-    //         Some(mut cmd) => {
-    //             let variation = Variation::new(variation);
-
-    //             match cmd.variations.entry(variation.args_count) {
-    //                 Entry::Occupied(_) => Err(StorageError::InternalError(
-    //                     "Variation with this amount of args already exists".to_string(),
-    //                 )),
-    //                 Entry::Vacant(v) => {
-    //                     v.insert(variation);
-
-    //                     // ToDo: I think this is not needed since we modified original command?
-    //                     // self.db.write(|data| {
-    //                     //     data.insert(command_name, cmd);
-    //                     // });
-
-    //                     self.db
-    //                         .save()
-    //                         .map_err(|err| StorageError::DatabaseError(err))?;
-
-    //                     Ok(())
-    //                 }
-    //             }
-    //         }
-    //         None => Err(StorageError::InternalError(
-    //             "Command doesn't exist".to_string(),
-    //         )),
-    //     }
-    // }
 }

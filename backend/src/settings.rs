@@ -1,5 +1,6 @@
 use std::fmt;
 
+use aws_config::ConfigLoader;
 use config::{Config, ConfigError, File};
 use serde::Deserialize;
 
@@ -19,6 +20,25 @@ pub struct Auth {
     pub enabled: bool,
     pub providers: Vec<AuthProvider>,
     pub redirect_url: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct S3StorageConfig {
+    pub bucket: String,
+    pub region: String,
+    pub prefix: String,
+    pub profile: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct FileStorageConfig {
+    pub path: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub enum Storage {
+    S3 { config: S3StorageConfig },
+    File { config: FileStorageConfig },
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -42,6 +62,7 @@ impl fmt::Display for ENV {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub auth: Auth,
+    pub storage: Storage,
     pub env: ENV,
 }
 

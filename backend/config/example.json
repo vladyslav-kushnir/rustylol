@@ -15,5 +15,12 @@
             }
         ],
         "redirect_url": "http://localhost:8000/admin/callback"
+    },
+    "storage": {
+        "File": {
+            "config": {
+                "path": "rustylol.ron"
+            }
+        }
     }
 }

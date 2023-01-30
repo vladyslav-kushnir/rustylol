@@ -2,13 +2,12 @@ use std::{sync::Arc, collections::HashMap};
 
 use crate::settings::Auth;
 
-use auth_provider::*;
-
 pub mod error;
 mod auth_value;
 mod auth_provider;
 
 pub use auth_value::*;
+pub use auth_provider::*;
 
 use self::providers::{google_oauth::GoogleOAuthClient, azure_oauth::AzureOAuthClient};
 
